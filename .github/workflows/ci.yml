@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  pull_request:
+  workflow_call:
+
+jobs:
+  no-game-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if game or mod files are tracked
+        run: |
+          bad=$(git ls-files | grep -Ei '\.(jar|zip|mca|mcr|dat|nbt|ogg|mcmeta)$|(^|/)(assets|textures|region)/' || true)
+          imgs=$(git ls-files | grep -Ei '\.(png|jpg|jpeg|webp|gif)$' | grep -v '^docs/' || true)
+          if [ -n "$bad$imgs" ]; then echo "Game or mod files must not be committed:"; echo "$bad"; echo "$imgs"; exit 1; fi
+
+  builder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - run: cargo test --locked
+      - run: cargo build --release --locked
+
+  viewer:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: viewer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: viewer/package-lock.json
+      - run: npm ci
+      - run: npm run build

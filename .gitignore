@@ -1,0 +1,18 @@
+# build output
+/target/
+/viewer/node_modules/
+/viewer/dist/
+/out/
+*.tiles/
+
+# Never commit game or mod files: the builder reads them from the user's own install at build time.
+*.jar
+*.zip
+/cache/
+/worlds/
+/saves/
+region/
+*.mca
+*.dat
+
+.DS_Store

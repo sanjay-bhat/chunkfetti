@@ -1,0 +1,10 @@
+[package]
+name = "chunkfetti"
+version = "0.0.0"
+description = "Turn a block-game world into streaming 3D tiles you can fly through in any browser"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+

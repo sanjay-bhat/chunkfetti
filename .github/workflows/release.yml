@@ -1,0 +1,114 @@
+name: release
+
+# Every push to main ships a release; the version comes from the commit messages (CONTRIBUTING.md).
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  version:
+    needs: checks
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.v.outputs.skip }}
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        run: bash scripts/next-version.sh
+      - if: steps.v.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  builder:
+    needs: version
+    if: needs.version.outputs.skip != 'true'
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, name: linux-x64, exe: chunkfetti }
+          - { os: macos-latest, target: aarch64-apple-darwin, name: macos-arm64, exe: chunkfetti }
+          - { os: macos-latest, target: x86_64-apple-darwin, name: macos-x64, exe: chunkfetti }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, name: windows-x64, exe: chunkfetti.exe }
+    runs-on: ${{ matrix.os }}
+    env:
+      CHUNKFETTI_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add ${{ matrix.target }}
+      - shell: bash
+        run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          dir=chunkfetti-${{ needs.version.outputs.tag }}-${{ matrix.name }}
+          mkdir "$dir"
+          cp target/${{ matrix.target }}/release/${{ matrix.exe }} README.md LICENSE-MIT LICENSE-APACHE "$dir"/
+          if [ "${{ matrix.name }}" = windows-x64 ]; then 7z a "$dir.zip" "$dir" >/dev/null; else tar czf "$dir.tar.gz" "$dir"; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builder-${{ matrix.name }}
+          path: chunkfetti-*.*z*
+
+  viewer:
+    needs: version
+    if: needs.version.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: viewer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: viewer/package-lock.json
+      - run: npm ci
+      - run: npm version ${{ needs.version.outputs.version }} --no-git-tag-version
+      - run: npm run build
+      - run: |
+          npm pack
+          tar czf ../chunkfetti-viewer-site-${{ needs.version.outputs.tag }}.tar.gz -C dist .
+          mv chunkfetti-viewer-*.tgz ..
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viewer
+          path: |
+            chunkfetti-viewer-*.tgz
+            chunkfetti-viewer-site-*.tar.gz
+
+  publish:
+    needs: [version, builder, viewer]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ needs.version.outputs.tag }}" dist/chunkfetti-* \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "chunkfetti ${{ needs.version.outputs.tag }}" --notes-file dist/release-notes.md
