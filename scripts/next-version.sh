@@ -35,7 +35,7 @@ version="$major.$minor.$patch"
   section "New" '^feat(\([^)]*\))?:'
   section "Fixed" '^fix(\([^)]*\))?:'
   section "Faster" '^perf(\([^)]*\))?:'
-  other=$(grep -vE '^(feat|fix|perf)(\([^)]*\))?!?:' <<< "$subjects" | sed -E 's/^[a-z]+(\([^)]*\))?: */- /; t; s/^/- /' || true)
+  other=$(grep -vE '^(feat|fix|perf)(\([^)]*\))?!?:' <<< "$subjects" | sed -E 's/^[a-z]+(\([^)]*\))?: *//; s/^/- /' || true)
   if [ -n "$other" ]; then printf '### Other\n\n%s\n\n' "$other"; fi
 } > release-notes.md
 

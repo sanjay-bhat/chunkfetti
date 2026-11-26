@@ -16,3 +16,4 @@ region/
 *.dat
 
 .DS_Store
+release-notes.md
