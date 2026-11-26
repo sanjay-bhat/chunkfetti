@@ -34,8 +34,10 @@ Never copy game or mod files into this repository, and never commit them.
 ## 4. Build the tiles
 
 ```bash
-chunkfetti build "<world folder>" -o "<world name>.tiles"
+chunkfetti build "<world folder>" -o "<world name>.tiles" [--mods "<mods folder>"] [--pack "<resource pack>"]
 ```
+
+To try it quickly on a big world, build a small part first with `--area x0,z0,x1,z1` (block coordinates).
 
 Defaults use a quarter of the CPU cores (at most 4), to keep laptops cool; only raise `--threads` if the user asks. Building a large world
 takes a while: run it in the background and report when it ends. Rebuilding after the world changes only redoes the
@@ -43,8 +45,9 @@ tiles whose chunks changed.
 
 ## 5. Preview
 
-With Node.js available: `cd viewer && npm install && npm run dev`, then open the printed local address. Point the
-viewer at the tiles folder. Nothing is published anywhere by this step.
+With Node.js available: link the tiles folder into the viewer (`ln -s "<absolute path to tiles>" viewer/public/tiles`;
+on Windows copy it), then `cd viewer && npm install && npm run dev` and open the printed local address. Drag to pan,
+scroll to zoom, right-drag to tilt. Nothing is published anywhere by this step.
 
 ## 6. Publishing (only if asked)
 

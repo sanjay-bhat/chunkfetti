@@ -4,13 +4,18 @@
   "description": "Browser viewer for chunkfetti tiles: fly from orbit to a single block (three.js, WebGPU with WebGL 2 fallback)",
   "license": "MIT OR Apache-2.0",
   "type": "module",
-  "repository": { "type": "git", "url": "https://github.com/sanjay-bhat/chunkfetti", "directory": "viewer" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sanjay-bhat/chunkfetti",
+    "directory": "viewer"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "3d-tiles-renderer": "0.5.4",
     "three": "0.187.0"
   },
   "devDependencies": {

@@ -1,47 +1,77 @@
-// chunkfetti viewer, first cut: a burst of block confetti to prove the renderer runs.
-// Tile streaming (orbit-to-street level of detail) arrives in the next releases.
+// chunkfetti viewer: streams a chunkfetti tileset (3D Tiles 1.1) and lets you fly from the whole world down to a
+// single block. Tiles near the camera are swapped for sharper ones; far ones stay coarse or are dropped.
+//
+// URL parameters:
+//   ?tiles=<url of tileset.json>   default: tiles/tileset.json next to this page
+//   &detail=<n>                    screen-space error target in pixels (lower = sharper, heavier); default 4
 import * as THREE from "three/webgpu";
+import { TilesRenderer } from "3d-tiles-renderer";
+import { MapControls } from "three/examples/jsm/controls/MapControls.js";
 
-const COLOURS = [0x5d9c3a, 0x866043, 0x7f7f7f, 0x3f76e4, 0xe0c16a, 0xd96f3c, 0xb7d3e6, 0x8e6cc4];
+const params = new URLSearchParams(location.search);
+const url = params.get("tiles") ?? "tiles/tileset.json";
+const hud = document.getElementById("hud")!;
 
 async function main() {
-  const renderer = new THREE.WebGPURenderer({ antialias: true }); // falls back to WebGL 2 where WebGPU is missing
+  const renderer = new THREE.WebGPURenderer({ antialias: true }); // WebGL 2 where WebGPU is missing
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
   document.body.prepend(renderer.domElement);
   await renderer.init();
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x14122b);
-  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
-  camera.position.set(0, 4, 26);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x333355, 2.2));
+  scene.background = new THREE.Color(0x9cc3e6);
+  scene.fog = new THREE.Fog(0x9cc3e6, 4000, 30000);
+  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 1, 200000);
 
-  const box = new THREE.BoxGeometry(1, 1, 1);
-  const count = 400;
-  const mesh = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial(), count);
-  const m = new THREE.Matrix4();
-  for (let i = 0; i < count; i++) {
-    const r = 3 + Math.random() * 12;
-    const a = Math.random() * Math.PI * 2;
-    const y = (Math.random() - 0.3) * 14;
-    m.makeTranslation(Math.cos(a) * r, y, Math.sin(a) * r);
-    mesh.setMatrixAt(i, m);
-    mesh.setColorAt(i, new THREE.Color(COLOURS[i % COLOURS.length]));
-  }
-  scene.add(mesh);
+  // the tileset's frame is z-up; turning it back makes the scene use the game's own axes (y up)
+  const tiles = new TilesRenderer(url);
+  tiles.errorTarget = Number(params.get("detail") ?? 4);
+  tiles.group.rotation.x = -Math.PI / 2;
+  scene.add(tiles.group);
+  tiles.setCamera(camera);
+  tiles.setResolutionFromRenderer(camera, renderer as never);
+
+  const controls = new MapControls(camera, renderer.domElement);
+  controls.screenSpacePanning = false;
+  controls.zoomToCursor = true;
+  controls.maxPolarAngle = Math.PI * 0.495;
+
+  let framed = false;
+  tiles.addEventListener("load-tileset", () => {
+    if (framed) return;
+    const sphere = new THREE.Sphere();
+    tiles.group.updateMatrixWorld(true);
+    if (tiles.getBoundingSphere(sphere)) {
+      framed = true;
+      const c = sphere.center;
+      camera.position.set(c.x, c.y + sphere.radius * 1.2, c.z + sphere.radius * 0.9);
+      controls.target.copy(c);
+      controls.update();
+    }
+  });
 
   addEventListener("resize", () => {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+    tiles.setResolutionFromRenderer(camera, renderer as never);
   });
+
+  let last = 0;
   renderer.setAnimationLoop((t: number) => {
-    mesh.rotation.y = t * 0.0001;
+    controls.update();
+    camera.updateMatrixWorld();
+    tiles.update();
     renderer.render(scene, camera);
+    if (t - last > 500) {
+      last = t;
+      const p = controls.target;
+      hud.textContent = `x ${p.x.toFixed(0)}  z ${p.z.toFixed(0)}  height ${camera.position.y.toFixed(0)}   tiles on screen ${tiles.visibleTiles.size}`;
+    }
   });
 }
 
 main().catch((e) => {
-  document.getElementById("hud")!.textContent = `chunkfetti viewer could not start: ${e}`;
+  hud.textContent = `chunkfetti viewer could not start: ${e}`;
 });

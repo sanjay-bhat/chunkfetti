@@ -17,8 +17,9 @@
 lets anyone fly through it in a web page: from a whole-world outline in orbit, down to a single block, the underground
 included. No game server, no plugins on a live server, no editing: just files you can put on any static host.
 
-> **Status: early days.** The command line, the release pipeline and the viewer shell are in place; tiling is the
-> next milestone. Watch the releases.
+> **Status: first tiles.** `chunkfetti build` turns a 1.18+ world into a full level-of-detail tileset with block
+> colours from your own game and mods, and the viewer streams it. Next up: smaller tiles (quantised, compressed
+> meshes), real textures up close, and an underground view. Watch the releases.
 
 ## Why another map?
 
@@ -57,8 +58,11 @@ chunkfetti doctor
 ```
 
 ```bash
-chunkfetti build path/to/saves/MyWorld -o MyWorld.tiles
+chunkfetti build path/to/saves/MyWorld -o MyWorld.tiles --mods path/to/mods
 ```
+
+Then preview it: put (or link) the tiles folder at `viewer/public/tiles` and run `npm install && npm run dev` in
+`viewer/`, or serve the built viewer anywhere and open it with `?tiles=<url of tileset.json>`.
 
 Or let Claude do the whole thing: open this repo in [Claude Code](https://claude.com/claude-code) and ask it to
 "set up chunkfetti for my world". The bundled skill (`.claude/skills/chunkfetti`) checks your system, asks before
