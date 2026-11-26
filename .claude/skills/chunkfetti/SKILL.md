@@ -37,7 +37,7 @@ Never copy game or mod files into this repository, and never commit them.
 chunkfetti build "<world folder>" -o "<world name>.tiles"
 ```
 
-Defaults use half the CPU cores, to keep laptops cool; only raise `--threads` if the user asks. Building a large world
+Defaults use a quarter of the CPU cores (at most 4), to keep laptops cool; only raise `--threads` if the user asks. Building a large world
 takes a while: run it in the background and report when it ends. Rebuilding after the world changes only redoes the
 tiles whose chunks changed.
 

@@ -32,7 +32,7 @@ Existing web maps are brilliant for survival servers. chunkfetti is aimed at the
 | **Everything in the world** | Modded blocks render from the mods' own models and textures |
 | **Static** | Output is plain files: Cloudflare Pages, GitHub Pages, S3, a USB stick |
 | **Small on the wire** | Compact meshes, GPU-ready textures, Brotli |
-| **Kind to laptops** | Uses half the cores by default and rebuilds only tiles whose chunks changed |
+| **Kind to laptops** | Uses a quarter of the cores (at most 4) by default and rebuilds only tiles whose chunks changed |
 
 ## How it works
 

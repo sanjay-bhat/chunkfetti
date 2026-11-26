@@ -29,7 +29,7 @@ COMMANDS:
 OPTIONS for build:
     -o, --out <DIR>         Where the tiles go
     --game <JAR>            The game's client jar to take block textures from (default: found by doctor)
-    --threads <N>           Worker threads (default: half the CPU cores, to keep laptops cool)
+    --threads <N>           Worker threads (default: a quarter of the CPU cores, at most 4, to keep laptops cool)
 ";
 
 fn main() -> ExitCode {
@@ -96,20 +96,28 @@ fn doctor() -> ExitCode {
             println!("  no client jars yet (launch the game once to download one)");
         }
         for (name, jar) in vs {
-            println!("  {name:<20} {}", jar.display());
+            println!("  {name}\n      {}", jar.display());
         }
         let saves = dir.join("saves");
-        if let Ok(rd) = std::fs::read_dir(&saves) {
-            let n = rd.flatten().filter(|e| e.path().join("level.dat").is_file()).count();
-            println!("  {n} saved world(s) in {}", saves.display());
+        match std::fs::read_dir(&saves) {
+            Ok(rd) => {
+                let n = rd.flatten().filter(|e| e.path().join("level.dat").is_file()).count();
+                println!("  {n} saved world(s) in {}", saves.display());
+            }
+            Err(_) => println!("  no saves folder here: launcher profiles with their own game folder keep worlds there; pass that world folder to build"),
         }
     }
     if !any {
         println!("no game folder found in the usual places; pass --game <JAR> to build");
     }
     let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2);
-    println!("\nCPU cores: {cores} (build uses {} by default)", (cores / 2).max(1));
+    println!("\nCPU cores: {cores} (build uses {} by default; --threads to change)", default_threads(cores));
     ExitCode::SUCCESS
+}
+
+/// Gentle default: a quarter of the cores, at least 1 and at most 4, so a build never cooks a laptop.
+fn default_threads(cores: usize) -> usize {
+    (cores / 4).clamp(1, 4)
 }
 
 fn build(args: &[String]) -> ExitCode {
@@ -150,6 +158,14 @@ mod tests {
     #[test]
     fn version_is_set() {
         assert!(!VERSION.is_empty());
+    }
+
+    #[test]
+    fn default_threads_stay_gentle() {
+        assert_eq!(default_threads(1), 1);
+        assert_eq!(default_threads(8), 2);
+        assert_eq!(default_threads(16), 4);
+        assert_eq!(default_threads(64), 4);
     }
 
     #[test]
