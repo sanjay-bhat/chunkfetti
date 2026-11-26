@@ -62,6 +62,10 @@ chunkfetti doctor
 chunkfetti build path/to/saves/MyWorld -o MyWorld.tiles --mods path/to/mods
 ```
 
+Every build ends with a size report (also saved as `size-report.json`, and available any time with
+`chunkfetti size <DIR>`): tiles and megabytes per level, an estimate of the compressed size in transit, and whether
+the result fits common free static hosts.
+
 Then preview it: put (or link) the tiles folder at `viewer/public/tiles` and run `npm install && npm run dev` in
 `viewer/`, or serve the built viewer anywhere and open it with `?tiles=<url of tileset.json>`.
 

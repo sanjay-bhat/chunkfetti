@@ -144,6 +144,7 @@ pub fn run(o: &Options, assets: &Assets) -> Result<Stats, String> {
         total as f64 / 1e6,
         t0.elapsed().as_secs_f32()
     );
+    crate::report::run(&o.out)?;
     Ok(Stats { levels: levels.len(), tiles: n_tiles, bytes: total })
 }
 

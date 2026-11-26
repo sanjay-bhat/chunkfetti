@@ -7,6 +7,7 @@ mod assets;
 mod build;
 mod mesh;
 mod nbt;
+mod report;
 mod voxel;
 mod world;
 
@@ -29,7 +30,8 @@ USAGE:
 COMMANDS:
     doctor                  Find game installs and versions on this computer (textures are read from here,
                             never shipped with chunkfetti)
-    build <WORLD> -o <DIR>  Turn a saved world into streaming tiles
+    build <WORLD> -o <DIR>  Turn a saved world into streaming tiles (ends with a size report)
+    size <DIR>              Size report for tiles already built: per level, compressed, and against host limits
     help                    Show this message
     version                 Show the version
 
@@ -55,6 +57,19 @@ fn main() -> ExitCode {
         }
         Some("doctor") => doctor(),
         Some("build") => build(&args[1..]),
+        Some("size") => match args.get(1) {
+            Some(d) => match report::run(Path::new(d)) {
+                Ok(_) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("no tiles to report on in {d}: {e}");
+                    ExitCode::from(1)
+                }
+            },
+            None => {
+                eprintln!("usage: chunkfetti size <DIR>");
+                ExitCode::from(2)
+            }
+        },
         Some(other) => {
             eprintln!("unknown command: {other}\n");
             eprint!("{HELP}");
