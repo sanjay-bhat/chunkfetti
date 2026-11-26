@@ -107,8 +107,9 @@ impl Grid {
                             }
                         }
                     }
-                    // two of eight is enough to keep thin things (spires, railings) visible from afar
-                    col.push(if n >= 2 {
+                    // a coarse voxel is solid when at least half of its eight are: floors and walls one block
+                    // thick survive, and so do tunnels and rooms underground (a looser rule fills them in)
+                    col.push(if n >= 4 {
                         let t = [(s[0] / n) as u8, (s[1] / n) as u8, (s[2] / n) as u8];
                         let sd = [(s[3] / n) as u8, (s[4] / n) as u8, (s[5] / n) as u8];
                         pack(t, sd)

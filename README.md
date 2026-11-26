@@ -18,8 +18,9 @@ lets anyone fly through it in a web page: from a whole-world outline in orbit, d
 included. No game server, no plugins on a live server, no editing: just files you can put on any static host.
 
 > **Status: first tiles.** `chunkfetti build` turns a 1.18+ world into a full level-of-detail tileset with block
-> colours from your own game and mods, and the viewer streams it. Next up: smaller tiles (quantised, compressed
-> meshes), real textures up close, and an underground view. Watch the releases.
+> colours from your own game and mods, and the viewer streams it, with an underground view: press **U** (or open
+> `?cut=<y>`) to cut the world away above a height and look straight into tunnels, stations and basements; **[** and
+> **]** move the cut. Next up: smaller tiles (quantised, compressed meshes) and real textures up close.
 
 ## Why another map?
 

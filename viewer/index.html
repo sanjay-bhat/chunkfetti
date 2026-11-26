@@ -5,13 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>chunkfetti</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #14122b; color: #f4eede; font: 14px ui-monospace, monospace; }
+    html, body { margin: 0; height: 100%; background: #14122b; color: #f4eede; font: 13px ui-monospace, monospace; }
     canvas { display: block; }
-    #hud { position: fixed; left: 16px; bottom: 16px; opacity: .8; }
+    .panel { position: fixed; background: rgba(20, 18, 43, .78); border-radius: 8px; padding: 8px 12px; }
+    #hud { left: 16px; bottom: 16px; }
+    #cut { right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; min-width: 230px; }
+    #cut button { font: inherit; color: inherit; background: #3a3466; border: 1px solid #6c4fb3; border-radius: 6px;
+                  padding: 6px 10px; cursor: pointer; }
+    #cut button[aria-pressed="true"] { background: #6c4fb3; }
+    #cut input { width: 100%; accent-color: #e0c16a; }
+    #cut .row { display: flex; justify-content: space-between; opacity: .85; }
+    #cut[data-on="false"] .depth { display: none; }
   </style>
 </head>
 <body>
-  <div id="hud">chunkfetti: loading tiles...</div>
+  <div id="hud" class="panel">chunkfetti: loading tiles...</div>
+  <div id="cut" class="panel" data-on="false">
+    <button id="cut-toggle" aria-pressed="false" title="Cut the world away above a height (U)">Underground: off</button>
+    <div class="depth">
+      <input id="cut-y" type="range" min="-64" max="320" step="1" value="60" aria-label="Cut height">
+      <div class="row"><span>cut above</span><span id="cut-label">y 60</span></div>
+      <div class="row"><span>[ and ] to move</span></div>
+    </div>
+  </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
