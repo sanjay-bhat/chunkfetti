@@ -45,7 +45,9 @@ saved world ──► chunkfetti build ──► tiles/ (meshes + textures + til
 ```
 
 - **Builder** (`crates/chunkfetti`, Rust): reads region files, meshes chunks, simplifies them level by level, packs
-  the textures it finds in *your* game and mod jars, and writes a tile tree.
+  the textures it finds in *your* game and mod jars, and writes a tile tree. Plants, torches, signs and thin blocks
+  that fill less than a quarter of their cube (iron bars, chains, ladders, doors, trapdoors, fences, carpets) are
+  left out of the geometry, so railings and chandeliers don't turn into solid walls and pillars from afar.
 - **Viewer** (`viewer/`, TypeScript + three.js): streams the tile tree, refining what is near the camera; WebGPU where
   the browser has it, WebGL 2 everywhere else.
 

@@ -106,14 +106,19 @@ impl Assets {
         let model = self
             .json(&format!("assets/{ns}/blockstates/{path}.json"))
             .and_then(|bs| first_model(&bs));
-        let (textures, parents, has_elements) = match &model {
+        let (textures, parents, has_elements, fill) = match &model {
             Some(m) => self.resolve_model(m),
-            None => (HashMap::new(), Vec::new(), true),
+            None => (HashMap::new(), Vec::new(), true, 1.0),
         };
         // plants, torches, rails, signs and other small or flat things are left out of the far-away geometry
         let skip_parent = ["cross", "tinted_cross", "template_torch", "template_torch_wall", "rail_flat", "rail_raised",
             "flower_pot_cross", "crop", "stem_growth", "template_glass_pane_noside", "redstone_dust"];
         if parents.iter().any(|p| skip_parent.iter().any(|s| p.ends_with(&format!("block/{s}")))) {
+            return Look { solid: false, ..fallback };
+        }
+        // thin things (iron bars, chains, ladders, doors, trapdoors, fences, carpets) would turn into solid walls
+        // and pillars in the far-away geometry: keep only blocks that fill at least a quarter of their cube
+        if has_elements && fill < 0.25 {
             return Look { solid: false, ..fallback };
         }
         if model.is_some() && !has_elements && !matches!(path, "water" | "lava" | "bubble_column") {
@@ -148,18 +153,23 @@ impl Assets {
         Look { solid: true, top, side }
     }
 
-    /// Texture variables (resolved), the parent chain and whether any model in it has its own geometry.
-    fn resolve_model(&self, model: &str) -> (HashMap<String, String>, Vec<String>, bool) {
+    /// Texture variables (resolved), the parent chain, whether any model in it has its own geometry, and how much of
+    /// the block that geometry fills (0 to 1; the nearest model with elements wins, as in the game).
+    fn resolve_model(&self, model: &str) -> (HashMap<String, String>, Vec<String>, bool, f32) {
         let mut vars: HashMap<String, String> = HashMap::new();
         let mut parents = Vec::new();
         let mut has_elements = false;
+        let mut fill = 1.0f32;
         let mut cur = Some(model.to_string());
         for _ in 0..16 {
             let Some(m) = cur.take() else { break };
             let (ns, p) = m.split_once(':').unwrap_or(("minecraft", &m));
             parents.push(format!("{ns}:{p}"));
             let Some(j) = self.json(&format!("assets/{ns}/models/{p}.json")) else { break };
-            if j.get("elements").is_some() {
+            if let Some(els) = j.get("elements").and_then(Value::as_array) {
+                if !has_elements {
+                    fill = element_fill(els);
+                }
                 has_elements = true;
             }
             if let Some(t) = j.get("textures").and_then(Value::as_object) {
@@ -189,7 +199,7 @@ impl Assets {
                 out.insert(k, v);
             }
         }
-        (out, parents, has_elements)
+        (out, parents, has_elements, fill)
     }
 
     fn texture_colour(&self, tex: &str) -> Option<[u8; 3]> {
@@ -265,6 +275,21 @@ fn zip_entries(d: &[u8]) -> Option<Vec<(String, usize, u16, usize)>> {
         p += 46 + nl + el + cl;
     }
     Some(out)
+}
+
+/// How much of a block's cube a model's elements fill, 0 to 1 (overlaps are counted twice, so this errs high).
+fn element_fill(els: &[Value]) -> f32 {
+    let v3 = |e: &Value, k: &str| -> Option<[f32; 3]> {
+        let a = e.get(k)?.as_array()?;
+        Some([a.first()?.as_f64()? as f32, a.get(1)?.as_f64()? as f32, a.get(2)?.as_f64()? as f32])
+    };
+    let mut vol = 0.0f32;
+    for e in els {
+        let (Some(f), Some(t)) = (v3(e, "from"), v3(e, "to")) else { continue };
+        let d = |i: usize| (t[i].clamp(0.0, 16.0) - f[i].clamp(0.0, 16.0)).abs();
+        vol += d(0) * d(1) * d(2);
+    }
+    (vol / 4096.0).min(1.0)
 }
 
 /// Average colour of a PNG's visible pixels (8-bit or palette images, not interlaced).
@@ -427,8 +452,16 @@ mod tests {
         w("assets/test/textures/block/brick.png", &png(2, 2, [200, 50, 40, 255]));
         w("assets/test/blockstates/flower.json", br#"{"variants":{"":{"model":"test:block/flower"}}}"#);
         w("assets/test/models/block/flower.json", br#"{"parent":"minecraft:block/cross","textures":{"cross":"test:block/brick"}}"#);
+        w("assets/test/blockstates/bars.json", br#"{"multipart":[{"apply":{"model":"test:block/bars_post"}}]}"#);
+        w("assets/test/models/block/bars_post.json",
+          br#"{"textures":{"bars":"test:block/brick"},"elements":[{"from":[7,0,7],"to":[9,16,9]}]}"#);
+        w("assets/test/blockstates/slab.json", br#"{"variants":{"type=bottom":{"model":"test:block/slab"}}}"#);
+        w("assets/test/models/block/slab.json",
+          br#"{"textures":{"all":"test:block/brick"},"elements":[{"from":[0,0,0],"to":[16,8,16]}]}"#);
         let mut a = Assets::default();
         a.add(&dir).unwrap();
+        assert!(!a.look("test:bars").solid, "a thin post is left out");
+        assert!(a.look("test:slab").solid, "a half block stays");
         let l = a.look("test:brick");
         assert!(l.solid);
         assert_eq!(l.top, [200, 50, 40]);
